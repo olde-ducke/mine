@@ -31,9 +31,9 @@ var keys = map[string][]byte{
 var (
 	gameOverMessage = "G A M E   O V E R"
 	winMessage      = "Y O U   W I N"
-	bombPercentage  = 1
-	fieldWith       = 1000
-	fieldHeight     = 1000
+	bombPercentage  = 30
+	width           = 10
+	height          = 10
 	seed            = time.Now().UnixNano()
 )
 
@@ -53,41 +53,19 @@ const (
 )
 
 type field struct {
-	cells     []cell
-	states    []state
+	cells     [][]cell
+	states    [][]state
 	rows      int
 	cols      int
 	cursorRow int
 	cursorCol int
 }
 
-func (f *field) fieldGet(row, col int) cell {
-	return f.cells[row*f.cols+col]
-}
-
-func (f *field) fieldSet(row, col int, cell cell) {
-	if f.fieldInBounds(row, col) {
-		f.cells[row*f.cols+col] = cell
-	}
-}
-
-func (f *field) fieldInBounds(row, col int) bool {
+func (f *field) inBounds(row, col int) bool {
 	return 0 <= row && row < f.rows && 0 <= col && col < f.cols
 }
 
-func (f *field) fieldCheckedGet(row, col int) (cell, bool) {
-	if f.fieldInBounds(row, col) {
-		return f.fieldGet(row, col), true
-	}
-
-	return 0, false
-}
-
-func (f *field) fieldGetState(row, col int) state {
-	return f.states[row*f.cols+col]
-}
-
-func (f *field) fieldResize(rows, cols int) error {
+func (f *field) resize(rows, cols int) error {
 	w, h, err := term.GetSize(int(syscall.Stdin))
 	if err != nil {
 		return err
@@ -109,21 +87,28 @@ func (f *field) fieldResize(rows, cols int) error {
 		cols = w / 3
 	}
 
-	f.cells = make([]cell, rows*cols)
-	f.states = make([]state, rows*cols)
+	f.cells = make([][]cell, rows)
+	for i := range f.cells {
+		f.cells[i] = make([]cell, cols)
+	}
+	f.states = make([][]state, rows)
+	for i := range f.states {
+		f.states[i] = make([]state, cols)
+	}
+
 	f.rows = rows
 	f.cols = cols
 	f.cursorRow, f.cursorCol = 0, 0
 	return nil
 }
 
-func (f *field) fieldCountNbors(row, col int) int {
+func (f *field) countBombs(row, col int) int {
 	var count int
 	for dy := -1; dy <= 1; dy++ {
 		for dx := -1; dx <= 1; dx++ {
 			if dx != 0 || dy != 0 {
-				cell, ok := f.fieldCheckedGet(row+dy, col+dx)
-				if ok && cell == bomb {
+				y, x := row+dy, col+dx
+				if f.inBounds(y, x) && f.cells[y][x] == bomb {
 					count++
 				}
 			}
@@ -133,11 +118,11 @@ func (f *field) fieldCountNbors(row, col int) int {
 	return count
 }
 
-func (f *field) fieldAtCursor(row, col int) bool {
+func (f *field) atCursor(row, col int) bool {
 	return f.cursorRow == row && f.cursorCol == col
 }
 
-func (f *field) fieldAroundCursor(row, col int) bool {
+func (f *field) aroundCursor(row, col int) bool {
 	for dy := -1; dy <= 1; dy++ {
 		for dx := -1; dx <= 1; dx++ {
 			if f.cursorRow+dy == row && f.cursorCol+dx == col {
@@ -149,21 +134,21 @@ func (f *field) fieldAroundCursor(row, col int) bool {
 	return false
 }
 
-func (f *field) fieldPrint() {
+func (f *field) display() {
 	for row := 0; row < f.rows; row++ {
 		for col := 0; col < f.cols; col++ {
-			if f.fieldAtCursor(row, col) {
+			if f.atCursor(row, col) {
 				fmt.Print("[")
 			} else {
 				fmt.Print(" ")
 			}
-			switch state := f.fieldGetState(row, col); state {
+			switch f.states[row][col] {
 			case opened:
-				switch f.fieldGet(row, col) {
+				switch f.cells[row][col] {
 				case bomb:
 					fmt.Print("@")
 				case empty:
-					nbors := f.fieldCountNbors(row, col)
+					nbors := f.countBombs(row, col)
 					if nbors > 0 {
 						fmt.Print(nbors)
 					} else {
@@ -176,7 +161,7 @@ func (f *field) fieldPrint() {
 				fmt.Print("P")
 			}
 
-			if f.fieldAtCursor(row, col) {
+			if f.atCursor(row, col) {
 				fmt.Print("]")
 			} else {
 				fmt.Print(" ")
@@ -186,15 +171,16 @@ func (f *field) fieldPrint() {
 	}
 }
 
-func (f *field) fieldRandomCell() (int, int, cell) {
+func (f *field) randomCell() (int, int) {
 	row, col := rand.Intn(f.rows), rand.Intn(f.cols)
-	return row, col, f.fieldGet(row, col)
+	return row, col
 }
 
-func (f *field) fieldRandomize(bombPercentage int) {
-	for i := 0; i < len(f.cells); i++ {
-		f.cells[i] = empty
-		f.states[i] = closed
+func (f *field) randomize(bombPercentage int) {
+	for i := 0; i < f.rows; i++ {
+		for j := 0; j < f.cols; j++ {
+			f.cells[i][j] = empty
+		}
 	}
 	if bombPercentage <= 1 {
 		bombPercentage = 1
@@ -203,38 +189,38 @@ func (f *field) fieldRandomize(bombPercentage int) {
 		bombPercentage = 80
 	}
 	bombCount := (f.rows*f.cols*bombPercentage + 99) / 100
+
 	i := 0
 	for i < bombCount {
-		row, col, cell := f.fieldRandomCell()
-		if cell == bomb || f.fieldAroundCursor(row, col) {
-			fmt.Print("skip", i, "\n\r")
+		row, col := f.randomCell()
+		if f.cells[row][col] == bomb || f.aroundCursor(row, col) {
 			continue
 		}
-		f.fieldSet(row, col, bomb)
+		f.cells[row][col] = bomb
 		i++
 	}
 }
 
-func (f *field) fieldOpenAtCursor() cell {
-	i := f.cursorRow*f.cols + f.cursorCol
-	f.states[i] = opened
-	return f.cells[i]
+func (f *field) openAtCursor() cell {
+	f.states[f.cursorRow][f.cursorCol] = opened
+	return f.cells[f.cursorRow][f.cursorCol]
 }
 
-func (f *field) fieldFlagAtCursor() {
-	i := f.cursorRow*f.cols + f.cursorCol
-	switch f.states[i] {
+func (f *field) flagAtCursor() {
+	switch f.states[f.cursorRow][f.cursorCol] {
 	case closed:
-		f.states[i] = flagged
+		f.states[f.cursorRow][f.cursorCol] = flagged
 	case flagged:
-		f.states[i] = closed
+		f.states[f.cursorRow][f.cursorCol] = closed
 	}
 }
 
-func (f *field) fieldOpenBombs() {
-	for i := 0; i < len(f.states); i++ {
-		if f.cells[i] == bomb {
-			f.states[i] = opened
+func (f *field) openBombs() {
+	for i := 0; i < f.rows; i++ {
+		for j := 0; j < f.cols; j++ {
+			if f.cells[i][j] == bomb {
+				f.states[i][j] = opened
+			}
 		}
 	}
 }
@@ -242,7 +228,7 @@ func (f *field) fieldOpenBombs() {
 func (f *field) render() {
 	fmt.Printf("\x1b[%dA", f.rows)
 	fmt.Printf("\x1b[%dD", f.cols*3)
-	f.fieldPrint()
+	f.display()
 }
 
 func setTerminal() (*term.State, error) {
@@ -269,12 +255,12 @@ func main() {
 		notFirst  bool
 		mainField field
 	)
-	if err := mainField.fieldResize(fieldWith, fieldHeight); err != nil {
+	if err := mainField.resize(width, height); err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	mainField.fieldPrint()
+	mainField.display()
 
 	state, err := setTerminal()
 	if err != nil {
@@ -313,15 +299,15 @@ loop:
 				mainField.cursorCol++
 			}
 		case isAKey(buf, "enter"), isAKey(buf, "f"):
-			mainField.fieldFlagAtCursor()
+			mainField.flagAtCursor()
 
 		case isAKey(buf, "space"):
 			if !notFirst {
-				mainField.fieldRandomize(bombPercentage)
+				mainField.randomize(bombPercentage)
 				notFirst = true
 			}
-			if cell := mainField.fieldOpenAtCursor(); cell == bomb {
-				mainField.fieldOpenBombs()
+			if cell := mainField.openAtCursor(); cell == bomb {
+				mainField.openBombs()
 				mainField.render()
 				time.Sleep(time.Second)
 				fmt.Print(gameOverMessage, "\n\r")
