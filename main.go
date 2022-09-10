@@ -55,6 +55,7 @@ const (
 type field struct {
 	cells     [][]cell
 	states    [][]state
+	generated bool
 	rows      int
 	cols      int
 	cursorRow int
@@ -202,6 +203,10 @@ func (f *field) randomize(bombPercentage int) {
 }
 
 func (f *field) openAtCursor() cell {
+	if !f.generated {
+		f.randomize(bombPercentage)
+		f.generated = true
+	}
 	f.states[f.cursorRow][f.cursorCol] = opened
 	return f.cells[f.cursorRow][f.cursorCol]
 }
@@ -231,6 +236,30 @@ func (f *field) render() {
 	f.display()
 }
 
+func (f *field) moveUp() {
+	if f.cursorRow > 0 {
+		f.cursorRow--
+	}
+}
+
+func (f *field) moveDown() {
+	if f.cursorRow < f.rows-1 {
+		f.cursorRow++
+	}
+}
+
+func (f *field) moveLeft() {
+	if f.cursorCol > 0 {
+		f.cursorCol--
+	}
+}
+
+func (f *field) moveRight() {
+	if f.cursorCol < f.cols-1 {
+		f.cursorCol++
+	}
+}
+
 func setTerminal() (*term.State, error) {
 	fd := int(syscall.Stdin)
 	prev, err := term.GetState(fd)
@@ -251,10 +280,7 @@ func isAKey(buf []byte, key string) bool {
 }
 
 func main() {
-	var (
-		notFirst  bool
-		mainField field
-	)
+	var mainField field
 	if err := mainField.resize(width, height); err != nil {
 		fmt.Println(err)
 		return
@@ -283,29 +309,21 @@ loop:
 		case isAKey(buf, "esc"), isAKey(buf, "q"):
 			break loop
 		case isAKey(buf, "up"), isAKey(buf, "w"):
-			if mainField.cursorRow > 0 {
-				mainField.cursorRow--
-			}
+			mainField.moveUp()
+
 		case isAKey(buf, "down"), isAKey(buf, "s"):
-			if mainField.cursorRow < mainField.rows-1 {
-				mainField.cursorRow++
-			}
+			mainField.moveDown()
+
 		case isAKey(buf, "left"), isAKey(buf, "a"):
-			if mainField.cursorCol > 0 {
-				mainField.cursorCol--
-			}
+			mainField.moveLeft()
+
 		case isAKey(buf, "right"), isAKey(buf, "d"):
-			if mainField.cursorCol < mainField.cols-1 {
-				mainField.cursorCol++
-			}
+			mainField.moveRight()
+
 		case isAKey(buf, "enter"), isAKey(buf, "f"):
 			mainField.flagAtCursor()
 
 		case isAKey(buf, "space"):
-			if !notFirst {
-				mainField.randomize(bombPercentage)
-				notFirst = true
-			}
 			if cell := mainField.openAtCursor(); cell == bomb {
 				mainField.openBombs()
 				mainField.render()
