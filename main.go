@@ -29,9 +29,12 @@ var keys = map[string][]byte{
 }
 
 var (
-	gameOverMessage = "Y O U   D I E D"
-	winMessage      = "Y O U   D E F E A T E D"
-	bombPercentage  = 20
+	gameOverMessage = "G A M E   O V E R"
+	winMessage      = "Y O U   W I N"
+	bombPercentage  = 1
+	fieldWith       = 1000
+	fieldHeight     = 1000
+	seed            = time.Now().UnixNano()
 )
 
 type cell int
@@ -69,7 +72,7 @@ func (f *field) fieldSet(row, col int, cell cell) {
 }
 
 func (f *field) fieldInBounds(row, col int) bool {
-	return 0 <= row && row < f.rows-1 && 0 <= col && col < f.cols-1
+	return 0 <= row && row < f.rows && 0 <= col && col < f.cols
 }
 
 func (f *field) fieldCheckedGet(row, col int) (cell, bool) {
@@ -84,12 +87,34 @@ func (f *field) fieldGetState(row, col int) state {
 	return f.states[row*f.cols+col]
 }
 
-func (f *field) fieldResize(rows, cols int) {
+func (f *field) fieldResize(rows, cols int) error {
+	w, h, err := term.GetSize(int(syscall.Stdin))
+	if err != nil {
+		return err
+	}
+
+	if rows < 7 {
+		rows = 7
+	}
+
+	if rows > h {
+		rows = h - 1
+	}
+
+	if cols < 7 {
+		cols = 7
+	}
+
+	if cols > w/3 {
+		cols = w / 3
+	}
+
 	f.cells = make([]cell, rows*cols)
 	f.states = make([]state, rows*cols)
 	f.rows = rows
 	f.cols = cols
 	f.cursorRow, f.cursorCol = 0, 0
+	return nil
 }
 
 func (f *field) fieldCountNbors(row, col int) int {
@@ -174,13 +199,15 @@ func (f *field) fieldRandomize(bombPercentage int) {
 	if bombPercentage <= 1 {
 		bombPercentage = 1
 	}
-	if bombPercentage > 90 {
-		bombPercentage = 90
+	if bombPercentage > 80 {
+		bombPercentage = 80
 	}
 	bombCount := (f.rows*f.cols*bombPercentage + 99) / 100
-	for i := 0; i < bombCount; {
+	i := 0
+	for i < bombCount {
 		row, col, cell := f.fieldRandomCell()
 		if cell == bomb || f.fieldAroundCursor(row, col) {
+			fmt.Print("skip", i, "\n\r")
 			continue
 		}
 		f.fieldSet(row, col, bomb)
@@ -204,7 +231,7 @@ func (f *field) fieldFlagAtCursor() {
 	}
 }
 
-func (f *field) fieldOpenEverything() {
+func (f *field) fieldOpenBombs() {
 	for i := 0; i < len(f.states); i++ {
 		if f.cells[i] == bomb {
 			f.states[i] = opened
@@ -242,8 +269,11 @@ func main() {
 		notFirst  bool
 		mainField field
 	)
-	rand.Seed(time.Now().UnixNano())
-	mainField.fieldResize(20, 20)
+	if err := mainField.fieldResize(fieldWith, fieldHeight); err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	mainField.fieldPrint()
 
 	state, err := setTerminal()
@@ -255,6 +285,8 @@ func main() {
 			panic(err)
 		}
 	}()
+
+	rand.Seed(seed)
 
 loop:
 	for {
@@ -289,7 +321,7 @@ loop:
 				notFirst = true
 			}
 			if cell := mainField.fieldOpenAtCursor(); cell == bomb {
-				mainField.fieldOpenEverything()
+				mainField.fieldOpenBombs()
 				mainField.render()
 				time.Sleep(time.Second)
 				fmt.Print(gameOverMessage, "\n\r")
