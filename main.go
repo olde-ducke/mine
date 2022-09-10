@@ -19,6 +19,7 @@ var keys = map[string][]byte{
 	"a":     []byte{97, 0, 0, 0, 0},
 	"d":     []byte{100, 0, 0, 0, 0},
 	"f":     []byte{102, 0, 0, 0, 0},
+	"r":     []byte{114, 0, 0, 0, 0},
 	"up":    []byte{27, 91, 65, 0, 0},
 	"down":  []byte{27, 91, 66, 0, 0},
 	"left":  []byte{27, 91, 68, 0, 0},
@@ -297,7 +298,6 @@ loop:
 
 		}
 
-		fmt.Print(buf)
 		mainField.render()
 	}
 
