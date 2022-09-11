@@ -7,6 +7,7 @@ import (
 	"os"
 	"syscall"
 	"time"
+	"unicode/utf8"
 
 	"golang.org/x/term"
 )
@@ -29,11 +30,11 @@ var keys = map[string][]byte{
 }
 
 var (
-	gameOverMessage = "G A M E   O V E R"
-	winMessage      = "Y O U   W I N"
+	gameOverMessage = " G A M E   O V E R "
+	winMessage      = " Y O U   W I N "
 	bombPercentage  = 1
-	width           = 1000
-	height          = 1000
+	width           = 7
+	height          = 7
 	seed            = time.Now().UnixNano()
 )
 
@@ -254,6 +255,19 @@ func (f *field) render() {
 	f.display()
 }
 
+func (f *field) printMessage(message string) {
+	length := utf8.RuneCountInString(message)
+	if length > f.cols*3 {
+		message = message[:f.cols*3]
+		length = utf8.RuneCountInString(message)
+	}
+	fmt.Print("\x1b[s")
+	fmt.Print("\x1b[", f.rows/2, "A")
+	fmt.Print("\x1b[", f.cols*3/2-length/2, "C")
+	fmt.Print("\x1b[7m", message, "\x1b[0m")
+	fmt.Print("\x1b[u")
+}
+
 func (f *field) moveUp() {
 	if f.cursorRow > 0 {
 		f.cursorRow--
@@ -354,8 +368,7 @@ loop:
 				mainField.openBombs()
 				mainField.render()
 				time.Sleep(time.Second)
-				// mainField.PrintMessage(gameOverMessage, "\n\r")
-				fmt.Print(gameOverMessage, "\n\r")
+				mainField.printMessage(gameOverMessage)
 				break loop
 			}
 
