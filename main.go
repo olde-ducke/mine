@@ -31,7 +31,7 @@ var keys = map[string][]byte{
 var (
 	gameOverMessage = "G A M E   O V E R"
 	winMessage      = "Y O U   W I N"
-	bombPercentage  = 30
+	bombPercentage  = 10
 	width           = 10
 	height          = 10
 	seed            = time.Now().UnixNano()
@@ -119,6 +119,31 @@ func (f *field) countBombs(row, col int) int {
 	return count
 }
 
+func (f *field) flagAtCursor() {
+	switch f.states[f.cursorRow][f.cursorCol] {
+	case closed:
+		f.states[f.cursorRow][f.cursorCol] = flagged
+	case flagged:
+		f.states[f.cursorRow][f.cursorCol] = closed
+	}
+}
+
+func (f *field) countFlags(row, col int) int {
+	var count int
+	for dy := -1; dy <= 1; dy++ {
+		for dx := -1; dx <= 1; dx++ {
+			if dx != 0 || dy != 0 {
+				y, x := row+dy, col+dx
+				if f.inBounds(y, x) && f.states[y][x] == flagged {
+					count++
+				}
+			}
+		}
+	}
+
+	return count
+}
+
 func (f *field) atCursor(row, col int) bool {
 	return f.cursorRow == row && f.cursorCol == col
 }
@@ -159,7 +184,7 @@ func (f *field) display() {
 			case closed:
 				fmt.Print(".")
 			case flagged:
-				fmt.Print("P")
+				fmt.Print("%")
 			}
 
 			if f.atCursor(row, col) {
@@ -202,22 +227,31 @@ func (f *field) randomize(bombPercentage int) {
 	}
 }
 
-func (f *field) openAtCursor() cell {
+func (f *field) openAt(row, col int) bool {
 	if !f.generated {
 		f.randomize(bombPercentage)
 		f.generated = true
 	}
-	f.states[f.cursorRow][f.cursorCol] = opened
-	return f.cells[f.cursorRow][f.cursorCol]
+	f.states[row][col] = opened
+
+	if f.countBombs(row, col) == 0 {
+		for dy := -1; dy <= 1; dy++ {
+			for dx := -1; dx <= 1; dx++ {
+				y, x := row+dy, col+dx
+				if f.inBounds(y, x) {
+					if f.states[y][x] == closed && f.states[y][x] != flagged {
+						f.openAt(y, x)
+					}
+				}
+			}
+		}
+	}
+
+	return f.cells[row][col] == bomb
 }
 
-func (f *field) flagAtCursor() {
-	switch f.states[f.cursorRow][f.cursorCol] {
-	case closed:
-		f.states[f.cursorRow][f.cursorCol] = flagged
-	case flagged:
-		f.states[f.cursorRow][f.cursorCol] = closed
-	}
+func (f *field) openAtCursor() bool {
+	return f.openAt(f.cursorRow, f.cursorCol)
 }
 
 func (f *field) openBombs() {
@@ -231,8 +265,8 @@ func (f *field) openBombs() {
 }
 
 func (f *field) render() {
-	fmt.Printf("\x1b[%dA", f.rows)
-	fmt.Printf("\x1b[%dD", f.cols*3)
+	fmt.Print("\x1b[", f.rows, "A")
+	fmt.Print("\x1b[", f.cols*3, "D")
 	f.display()
 }
 
@@ -280,7 +314,9 @@ func isAKey(buf []byte, key string) bool {
 }
 
 func main() {
-	var mainField field
+	var (
+		mainField field
+	)
 	if err := mainField.resize(width, height); err != nil {
 		fmt.Println(err)
 		return
@@ -324,7 +360,7 @@ loop:
 			mainField.flagAtCursor()
 
 		case isAKey(buf, "space"):
-			if cell := mainField.openAtCursor(); cell == bomb {
+			if mainField.openAtCursor() {
 				mainField.openBombs()
 				mainField.render()
 				time.Sleep(time.Second)
