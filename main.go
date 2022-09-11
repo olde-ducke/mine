@@ -31,9 +31,9 @@ var keys = map[string][]byte{
 var (
 	gameOverMessage = "G A M E   O V E R"
 	winMessage      = "Y O U   W I N"
-	bombPercentage  = 10
-	width           = 10
-	height          = 10
+	bombPercentage  = 1
+	width           = 1000
+	height          = 1000
 	seed            = time.Now().UnixNano()
 )
 
@@ -306,7 +306,13 @@ func setTerminal() (*term.State, error) {
 		return nil, err
 	}
 
+	fmt.Print("\x1b[?25l")
 	return prev, nil
+}
+
+func restoreTerminal(state *term.State) error {
+	fmt.Print("\x1b[?25h")
+	return term.Restore(int(syscall.Stdin), state)
 }
 
 func isAKey(buf []byte, key string) bool {
@@ -329,7 +335,7 @@ func main() {
 		panic(err)
 	}
 	defer func() {
-		if err := term.Restore(int(syscall.Stdin), state); err != nil {
+		if err := restoreTerminal(state); err != nil {
 			panic(err)
 		}
 	}()
@@ -364,6 +370,7 @@ loop:
 				mainField.openBombs()
 				mainField.render()
 				time.Sleep(time.Second)
+				// mainField.PrintMessage(gameOverMessage, "\n\r")
 				fmt.Print(gameOverMessage, "\n\r")
 				break loop
 			}
