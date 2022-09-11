@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -21,6 +22,7 @@ var keys = map[string][]byte{
 	"d":     []byte{100, 0, 0, 0, 0},
 	"f":     []byte{102, 0, 0, 0, 0},
 	"r":     []byte{114, 0, 0, 0, 0},
+	"y":     []byte{121, 0, 0, 0, 0},
 	"up":    []byte{27, 91, 65, 0, 0},
 	"down":  []byte{27, 91, 66, 0, 0},
 	"left":  []byte{27, 91, 68, 0, 0},
@@ -262,10 +264,17 @@ func (f *field) printMessage(message string) {
 		length = utf8.RuneCountInString(message)
 	}
 	fmt.Print("\x1b[s")
-	fmt.Print("\x1b[", f.rows/2, "A")
+	fmt.Print("\x1b[", f.rows/2+1, "A")
 	fmt.Print("\x1b[", f.cols*3/2-length/2, "C")
 	fmt.Print("\x1b[7m", message, "\x1b[0m")
 	fmt.Print("\x1b[u")
+}
+
+func (f *field) getConfirmation(message string) bool {
+	f.printMessage(message)
+	buf := make([]byte, 5)
+	os.Stdin.Read(buf)
+	return isAKey(buf, "y")
 }
 
 func (f *field) moveUp() {
@@ -294,6 +303,10 @@ func (f *field) moveRight() {
 
 func setTerminal() (*term.State, error) {
 	fd := int(syscall.Stdin)
+	if !term.IsTerminal(fd) {
+		return nil, errors.New("can only draw in terminal")
+	}
+
 	prev, err := term.GetState(fd)
 	if err != nil {
 		return nil, err
@@ -320,6 +333,7 @@ func isAKey(buf []byte, key string) bool {
 func main() {
 	var (
 		mainField field
+		quit      bool
 	)
 	if err := mainField.resize(width, height); err != nil {
 		fmt.Println(err)
@@ -340,14 +354,16 @@ func main() {
 
 	rand.Seed(seed)
 
-loop:
-	for {
+	for !quit {
+		mainField.render()
+
 		buf := make([]byte, 5)
 		os.Stdin.Read(buf)
 
 		switch {
 		case isAKey(buf, "esc"), isAKey(buf, "q"):
-			break loop
+			quit = mainField.getConfirmation("are you sure? [y/N]")
+
 		case isAKey(buf, "up"), isAKey(buf, "w"):
 			mainField.moveUp()
 
@@ -369,12 +385,10 @@ loop:
 				mainField.render()
 				time.Sleep(time.Second)
 				mainField.printMessage(gameOverMessage)
-				break loop
+				quit = true
 			}
 
 		}
-
-		mainField.render()
 	}
 
 }
