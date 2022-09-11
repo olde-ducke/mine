@@ -128,22 +128,6 @@ func (f *field) flagAtCursor() {
 	}
 }
 
-func (f *field) countFlags(row, col int) int {
-	var count int
-	for dy := -1; dy <= 1; dy++ {
-		for dx := -1; dx <= 1; dx++ {
-			if dx != 0 || dy != 0 {
-				y, x := row+dy, col+dx
-				if f.inBounds(y, x) && f.states[y][x] == flagged {
-					count++
-				}
-			}
-		}
-	}
-
-	return count
-}
-
 func (f *field) atCursor(row, col int) bool {
 	return f.cursorRow == row && f.cursorCol == col
 }
