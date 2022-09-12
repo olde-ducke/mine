@@ -262,6 +262,28 @@ func (f *field) openBombs() {
 	}
 }
 
+func (f *field) victory() bool {
+	for i := 0; i < f.rows; i++ {
+		for j := 0; j < f.cols; j++ {
+			switch f.states[i][j] {
+			case opened:
+				if f.cells[i][j] != empty {
+					return false
+				}
+
+			case closed:
+				return false
+
+			case flagged:
+				if f.cells[i][j] != bomb {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
 func (f *field) render() {
 	fmt.Print("\x1b[", f.rows, "A")
 	fmt.Print("\x1b[", f.cols*3, "D")
@@ -395,15 +417,30 @@ func main() {
 		case isAKey(buf, "right"), isAKey(buf, "d"), isAKey(buf, "D"):
 			mainField.moveRight()
 
-		case isAKey(buf, "enter"), isAKey(buf, "f"), isAKey(buf, "F"):
-			mainField.flagAtCursor()
-
 		case isAKey(buf, "r"), isAKey(buf, "R"):
 			if mainField.getConfirmation("restart? [y/n]") {
 				if err := mainField.reset(width, height); err != nil {
 					fmt.Println(err)
 					return
 				}
+			}
+
+		case isAKey(buf, "enter"), isAKey(buf, "f"), isAKey(buf, "F"):
+			mainField.flagAtCursor()
+			if mainField.victory() {
+				mainField.render()
+				time.Sleep(time.Second)
+				mainField.printMessage(winMessage)
+				time.Sleep(time.Second)
+				mainField.render()
+				if mainField.getConfirmation("restart? [y/n]") {
+					if err := mainField.reset(width, height); err != nil {
+						fmt.Println(err)
+						return
+					}
+					continue
+				}
+				quit = true
 			}
 
 		case isAKey(buf, "space"):
