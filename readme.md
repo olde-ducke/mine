@@ -50,12 +50,13 @@ go build .
 
 |                     Shortcut                     | Description                                            |
 |--------------------------------------------------|--------------------------------------------------------|
-|           <kbd>Space</kbd><kbd>f</kbd>           | open field                                             |
 |             <kbd>Esc</kbd><kbd>q</kbd>           | quit                                                   |
 |              <kbd>Up</kbd><kbd>W</kbd>           | move right                                             |
 |            <kbd>Down</kbd><kbd>S</kbd>           | move down                                              |
 |            <kbd>Left</kbd><kbd>A</kbd>           | move left                                              |
 |           <kbd>Right</kbd><kbd>D</kbd>           | move right                                             |
+|           <kbd>Enter</kbd><kbd>F</kbd>           | flag cell                                              |
+|                       <kbd>Space</kbd>           | open cell                                              |
 |                           <kbd>R</kbd>           | restart                                                |
 |                           <kbd>Y</kbd>           | confirm                                                |
 |                           <kbd>N</kbd>           | decline                                                |

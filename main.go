@@ -45,8 +45,8 @@ var (
 	gameOverMessage = " G A M E   O V E R "
 	winMessage      = " Y O U   W O N "
 	bombPercentage  = 15
-	width           = 20
-	height          = 20
+	width           = 10
+	height          = 10
 	seed            = time.Now().UnixNano()
 )
 
