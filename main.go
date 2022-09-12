@@ -79,7 +79,7 @@ func (f *field) inBounds(row, col int) bool {
 	return 0 <= row && row < f.rows && 0 <= col && col < f.cols
 }
 
-func (f *field) resize(rows, cols int) error {
+func (f *field) reset(rows, cols int) error {
 	w, h, err := term.GetSize(int(syscall.Stdin))
 	if err != nil {
 		return err
@@ -112,6 +112,7 @@ func (f *field) resize(rows, cols int) error {
 
 	f.rows = rows
 	f.cols = cols
+	f.generated = false
 	f.cursorRow, f.cursorCol = 0, 0
 	return nil
 }
@@ -353,7 +354,7 @@ func main() {
 		mainField field
 		quit      bool
 	)
-	if err := mainField.resize(width, height); err != nil {
+	if err := mainField.reset(width, height); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -380,7 +381,7 @@ func main() {
 
 		switch {
 		case isAKey(buf, "esc"), isAKey(buf, "q"), isAKey(buf, "Q"):
-			quit = mainField.getConfirmation("are you sure? [y/N]")
+			quit = mainField.getConfirmation("are you sure? [y/n]")
 
 		case isAKey(buf, "up"), isAKey(buf, "w"), isAKey(buf, "W"):
 			mainField.moveUp()
@@ -396,6 +397,14 @@ func main() {
 
 		case isAKey(buf, "enter"), isAKey(buf, "f"), isAKey(buf, "F"):
 			mainField.flagAtCursor()
+
+		case isAKey(buf, "r"), isAKey(buf, "R"):
+			if mainField.getConfirmation("restart? [y/n]") {
+				if err := mainField.reset(width, height); err != nil {
+					fmt.Println(err)
+					return
+				}
+			}
 
 		case isAKey(buf, "space"):
 			if mainField.openAtCursor() {
