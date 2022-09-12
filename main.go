@@ -16,13 +16,23 @@ import (
 var keys = map[string][]byte{
 	"esc":   []byte{27, 0, 0, 0, 0},
 	"q":     []byte{113, 0, 0, 0, 0},
+	"Q":     []byte{81, 0, 0, 0, 0},
 	"w":     []byte{119, 0, 0, 0, 0},
+	"W":     []byte{87, 0, 0, 0, 0},
 	"s":     []byte{115, 0, 0, 0, 0},
+	"S":     []byte{83, 0, 0, 0, 0},
 	"a":     []byte{97, 0, 0, 0, 0},
+	"A":     []byte{65, 0, 0, 0, 0},
 	"d":     []byte{100, 0, 0, 0, 0},
+	"D":     []byte{68, 0, 0, 0, 0},
 	"f":     []byte{102, 0, 0, 0, 0},
+	"F":     []byte{70, 0, 0, 0, 0},
 	"r":     []byte{114, 0, 0, 0, 0},
+	"R":     []byte{82, 0, 0, 0, 0},
 	"y":     []byte{121, 0, 0, 0, 0},
+	"Y":     []byte{89, 0, 0, 0, 0},
+	"n":     []byte{110, 0, 0, 0, 0},
+	"N":     []byte{78, 0, 0, 0, 0},
 	"up":    []byte{27, 91, 65, 0, 0},
 	"down":  []byte{27, 91, 66, 0, 0},
 	"left":  []byte{27, 91, 68, 0, 0},
@@ -272,9 +282,17 @@ func (f *field) printMessage(message string) {
 
 func (f *field) getConfirmation(message string) bool {
 	f.printMessage(message)
-	buf := make([]byte, 5)
-	os.Stdin.Read(buf)
-	return isAKey(buf, "y")
+	for {
+		buf := make([]byte, 5)
+		os.Stdin.Read(buf)
+
+		switch {
+		case isAKey(buf, "y"), isAKey(buf, "Y"):
+			return true
+		case isAKey(buf, "n"), isAKey(buf, "N"):
+			return false
+		}
+	}
 }
 
 func (f *field) moveUp() {
@@ -361,22 +379,22 @@ func main() {
 		os.Stdin.Read(buf)
 
 		switch {
-		case isAKey(buf, "esc"), isAKey(buf, "q"):
+		case isAKey(buf, "esc"), isAKey(buf, "q"), isAKey(buf, "Q"):
 			quit = mainField.getConfirmation("are you sure? [y/N]")
 
-		case isAKey(buf, "up"), isAKey(buf, "w"):
+		case isAKey(buf, "up"), isAKey(buf, "w"), isAKey(buf, "W"):
 			mainField.moveUp()
 
-		case isAKey(buf, "down"), isAKey(buf, "s"):
+		case isAKey(buf, "down"), isAKey(buf, "s"), isAKey(buf, "S"):
 			mainField.moveDown()
 
-		case isAKey(buf, "left"), isAKey(buf, "a"):
+		case isAKey(buf, "left"), isAKey(buf, "a"), isAKey(buf, "A"):
 			mainField.moveLeft()
 
-		case isAKey(buf, "right"), isAKey(buf, "d"):
+		case isAKey(buf, "right"), isAKey(buf, "d"), isAKey(buf, "D"):
 			mainField.moveRight()
 
-		case isAKey(buf, "enter"), isAKey(buf, "f"):
+		case isAKey(buf, "enter"), isAKey(buf, "f"), isAKey(buf, "F"):
 			mainField.flagAtCursor()
 
 		case isAKey(buf, "space"):
