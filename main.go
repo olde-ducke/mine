@@ -43,7 +43,7 @@ var keys = map[string][]byte{
 
 var (
 	gameOverMessage = " G A M E   O V E R "
-	winMessage      = " Y O U   W I N "
+	winMessage      = " Y O U   W O N "
 	bombPercentage  = 1
 	width           = 7
 	height          = 7
