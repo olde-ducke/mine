@@ -318,6 +318,23 @@ func (f *field) getConfirmation(message string) bool {
 	}
 }
 
+func (f *field) finishGame(message string) bool {
+	f.render()
+	time.Sleep(time.Second)
+	f.printMessage(message)
+	time.Sleep(time.Second)
+	f.render()
+	if ok := f.getConfirmation("restart? [y/n]"); ok {
+		if err := f.reset(width, height); err != nil {
+			fmt.Println(err)
+			return false
+		}
+		return true
+	}
+
+	return false
+}
+
 func (f *field) moveUp() {
 	if f.cursorRow > 0 {
 		f.cursorRow--
@@ -372,10 +389,8 @@ func isAKey(buf []byte, key string) bool {
 }
 
 func main() {
-	var (
-		mainField field
-		quit      bool
-	)
+	var mainField field
+
 	if err := mainField.reset(width, height); err != nil {
 		fmt.Println(err)
 		return
@@ -395,7 +410,13 @@ func main() {
 
 	rand.Seed(seed)
 
-	for !quit {
+loop:
+	for {
+		if mainField.victory() {
+			if !mainField.finishGame(winMessage) {
+				break loop
+			}
+		}
 		mainField.render()
 
 		buf := make([]byte, 5)
@@ -403,7 +424,9 @@ func main() {
 
 		switch {
 		case isAKey(buf, "esc"), isAKey(buf, "q"), isAKey(buf, "Q"):
-			quit = mainField.getConfirmation("are you sure? [y/n]")
+			if mainField.getConfirmation("are you sure? [y/n]") {
+				break loop
+			}
 
 		case isAKey(buf, "up"), isAKey(buf, "w"), isAKey(buf, "W"):
 			mainField.moveUp()
@@ -427,41 +450,14 @@ func main() {
 
 		case isAKey(buf, "enter"), isAKey(buf, "f"), isAKey(buf, "F"):
 			mainField.flagAtCursor()
-			if mainField.victory() {
-				mainField.render()
-				time.Sleep(time.Second)
-				mainField.printMessage(winMessage)
-				time.Sleep(time.Second)
-				mainField.render()
-				if mainField.getConfirmation("restart? [y/n]") {
-					if err := mainField.reset(width, height); err != nil {
-						fmt.Println(err)
-						return
-					}
-					continue
-				}
-				quit = true
-			}
 
 		case isAKey(buf, "space"):
 			if mainField.openAtCursor() {
 				mainField.openBombs()
-				mainField.render()
-				time.Sleep(time.Second)
-				mainField.printMessage(gameOverMessage)
-				time.Sleep(time.Second)
-				mainField.render()
-				if mainField.getConfirmation("restart? [y/n]") {
-					if err := mainField.reset(width, height); err != nil {
-						fmt.Println(err)
-						return
-					}
-					continue
+				if !mainField.finishGame(gameOverMessage) {
+					break loop
 				}
-				quit = true
 			}
-
 		}
 	}
-
 }
