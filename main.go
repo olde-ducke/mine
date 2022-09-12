@@ -412,6 +412,15 @@ func main() {
 				mainField.render()
 				time.Sleep(time.Second)
 				mainField.printMessage(gameOverMessage)
+				time.Sleep(time.Second)
+				mainField.render()
+				if mainField.getConfirmation("restart? [y/n]") {
+					if err := mainField.reset(width, height); err != nil {
+						fmt.Println(err)
+						return
+					}
+					continue
+				}
 				quit = true
 			}
 
