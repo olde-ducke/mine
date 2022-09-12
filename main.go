@@ -44,9 +44,9 @@ var keys = map[string][]byte{
 var (
 	gameOverMessage = " G A M E   O V E R "
 	winMessage      = " Y O U   W O N "
-	bombPercentage  = 1
-	width           = 7
-	height          = 7
+	bombPercentage  = 15
+	width           = 20
+	height          = 20
 	seed            = time.Now().UnixNano()
 )
 
