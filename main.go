@@ -394,7 +394,7 @@ func restoreTerminal(state *term.State) error {
 }
 
 func isAKey(buf []byte, key string) bool {
-	return bytes.Compare(buf, keys[key]) == 0
+	return bytes.Equal(buf, keys[key])
 }
 
 func main() {
