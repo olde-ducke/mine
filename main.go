@@ -262,6 +262,18 @@ func (f *field) openBombs() {
 	}
 }
 
+func (f *field) openNonBombs() {
+	for i := 0; i < f.rows; i++ {
+		for j := 0; j < f.cols; j++ {
+			if f.cells[i][j] != bomb {
+				f.states[i][j] = opened
+			} else {
+				f.states[i][j] = flagged
+			}
+		}
+	}
+}
+
 func (f *field) victory() bool {
 	for i := 0; i < f.rows; i++ {
 		for j := 0; j < f.cols; j++ {
@@ -271,10 +283,7 @@ func (f *field) victory() bool {
 					return false
 				}
 
-			case closed:
-				return false
-
-			case flagged:
+			case flagged, closed:
 				if f.cells[i][j] != bomb {
 					return false
 				}
@@ -413,6 +422,7 @@ func main() {
 loop:
 	for {
 		if mainField.victory() {
+			mainField.openNonBombs()
 			if !mainField.finishGame(winMessage) {
 				break loop
 			}
