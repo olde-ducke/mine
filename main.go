@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"flag"
 	"fmt"
 	"math/rand"
 	"os"
@@ -12,6 +13,64 @@ import (
 
 	"golang.org/x/term"
 )
+
+var (
+	gameOverMessage = " G A M E   O V E R "
+	winMessage      = " Y O U   W O N "
+	bombPercentage  = 15
+	width           = 10
+	height          = 10
+	seed            = int64(0)
+)
+
+func init() {
+	flag.StringVar(&gameOverMessage, "game-over-message", gameOverMessage, "sets game over message")
+	flag.StringVar(&gameOverMessage, "g", gameOverMessage, "")
+
+	flag.StringVar(&winMessage, "win-message", winMessage, "sets win message")
+	flag.StringVar(&winMessage, "p", winMessage, "")
+
+	flag.IntVar(&bombPercentage, "bomb-percentage", bombPercentage, "sets bomb percentage")
+	flag.IntVar(&bombPercentage, "b", bombPercentage, "")
+
+	flag.IntVar(&width, "width", width, "game field width")
+	flag.IntVar(&width, "w", width, "")
+
+	flag.IntVar(&height, "height", height, "game field height")
+	flag.IntVar(&height, "h", height, "")
+
+	flag.Int64Var(&seed, "seed", seed, "game seed, will use unix-nano if 0")
+	flag.Int64Var(&seed, "s", seed, "")
+
+	var shorthands = map[string]string{
+		"game-over-message": "-g,",
+		"win-message":       "-p,",
+		"bomb-percentage":   "-b,",
+		"width":             "-w,",
+		"height":            "-h,",
+		"seed":              "-s,",
+	}
+
+	format := "  %-3s --%-19s %s %s\n"
+	flag.Usage = func() {
+		fmt.Println("simple minesweeper for terminal\nusage:\n$ mine [arguments]")
+		fmt.Printf(format, "-h,", "help", "show this message and exit", "")
+		flag.VisitAll(func(fn *flag.Flag) {
+			if fn.Usage == "" {
+				return
+			}
+
+			var defVal string
+			if fn.DefValue != "" && fn.DefValue != "false" {
+				defVal = fmt.Sprintf(" (default: %q)", fn.DefValue)
+			}
+
+			fmt.Printf(format, shorthands[fn.Name], fn.Name, fn.Usage, defVal)
+		})
+	}
+
+	flag.Parse()
+}
 
 var keys = map[string][]byte{
 	"esc":   []byte{27, 0, 0, 0, 0},
@@ -40,15 +99,6 @@ var keys = map[string][]byte{
 	"space": []byte{32, 0, 0, 0, 0},
 	"enter": []byte{13, 0, 0, 0, 0},
 }
-
-var (
-	gameOverMessage = " G A M E   O V E R "
-	winMessage      = " Y O U   W O N "
-	bombPercentage  = 15
-	width           = 10
-	height          = 10
-	seed            = time.Now().UnixNano()
-)
 
 type cell int
 
@@ -417,7 +467,11 @@ func main() {
 		}
 	}()
 
-	rand.Seed(seed)
+	if seed == 0 {
+		rand.Seed(time.Now().UnixNano())
+	} else {
+		rand.Seed(seed)
+	}
 
 loop:
 	for {
