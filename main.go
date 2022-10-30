@@ -14,6 +14,15 @@ import (
 	"golang.org/x/term"
 )
 
+const fallbackVersion = "v0.0.1"
+
+var (
+	version   string
+	buildDate string
+	commit    string
+	builtBy   string
+)
+
 var (
 	gameOverMessage = " G A M E   O V E R "
 	winMessage      = " Y O U   W O N "
@@ -24,6 +33,9 @@ var (
 )
 
 func init() {
+	var showVer bool
+	flag.BoolVar(&showVer, "version", showVer, "show version and exit")
+
 	flag.StringVar(&gameOverMessage, "game-over-message", gameOverMessage, "sets game over message")
 	flag.StringVar(&gameOverMessage, "g", gameOverMessage, "")
 
@@ -70,6 +82,32 @@ func init() {
 	}
 
 	flag.Parse()
+
+	if version == "" {
+		version = fallbackVersion
+	} else if version == "-debug" {
+		version = fallbackVersion + version
+	}
+
+	na := "Not available"
+	if buildDate == "" {
+		version = na
+	}
+
+	if commit == "" {
+		commit = na
+	}
+
+	if builtBy == "" {
+		builtBy = na
+	}
+
+	if showVer {
+		fmt.Printf("version:    %s\nbuild date: %s\ncommit:     %s\nbuilt by:   %s\n",
+			version, buildDate, commit, builtBy,
+		)
+		os.Exit(0)
+	}
 }
 
 var keys = map[string][]byte{
