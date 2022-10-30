@@ -38,7 +38,7 @@ func init() {
 	flag.IntVar(&bombPercentage, "b", bombPercentage, "")
 
 	flag.StringVar(&gameOverMessage, "game-over-message", gameOverMessage,
-		"replaces default game over message")
+		"replaces default game over message, can be up to width * 3 - 1")
 	flag.StringVar(&gameOverMessage, "g", gameOverMessage, "")
 
 	flag.IntVar(&height, "height", height,
@@ -57,7 +57,7 @@ func init() {
 	flag.IntVar(&width, "w", width, "")
 
 	flag.StringVar(&youWonMessage, "you-won-message", youWonMessage,
-		"replaces default you won message")
+		"replaces default you won message, can be up to width * 3 - 1")
 	flag.StringVar(&youWonMessage, "y", youWonMessage, "")
 
 	var shorthands = map[string]string{
@@ -397,8 +397,8 @@ func (f *field) render() {
 
 func (f *field) printMessage(message string) {
 	length := utf8.RuneCountInString(message)
-	if length > f.cols*3 {
-		message = message[:f.cols*3]
+	if length >= f.cols*3 {
+		message = message[:f.cols*3-1]
 		length = utf8.RuneCountInString(message)
 	}
 	fmt.Print("\x1b[s")
