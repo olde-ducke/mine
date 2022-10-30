@@ -25,7 +25,7 @@ var (
 
 var (
 	gameOverMessage = " G A M E   O V E R "
-	winMessage      = " Y O U   W O N "
+	youWonMessage   = " Y O U   W O N "
 	bombPercentage  = 15
 	width           = 10
 	height          = 10
@@ -33,39 +33,46 @@ var (
 )
 
 func init() {
+	flag.IntVar(&bombPercentage, "bomb-percentage", bombPercentage,
+		"sets bomb percentage, can be value between 1 and 80")
+	flag.IntVar(&bombPercentage, "b", bombPercentage, "")
+
+	flag.StringVar(&gameOverMessage, "game-over-message", gameOverMessage,
+		"replaces default game over message")
+	flag.StringVar(&gameOverMessage, "g", gameOverMessage, "")
+
+	flag.IntVar(&height, "height", height,
+		"game field height, can be value between 7 and terminal height - 1")
+	flag.IntVar(&height, "h", height, "")
+
+	flag.Int64Var(&seed, "seed", seed,
+		"game seed, will use unixnano timestamp as seed if set to 0")
+	flag.Int64Var(&seed, "s", seed, "")
+
 	var showVer bool
 	flag.BoolVar(&showVer, "version", showVer, "show version and exit")
 
-	flag.StringVar(&gameOverMessage, "game-over-message", gameOverMessage, "sets game over message")
-	flag.StringVar(&gameOverMessage, "g", gameOverMessage, "")
-
-	flag.StringVar(&winMessage, "win-message", winMessage, "sets win message")
-	flag.StringVar(&winMessage, "p", winMessage, "")
-
-	flag.IntVar(&bombPercentage, "bomb-percentage", bombPercentage, "sets bomb percentage")
-	flag.IntVar(&bombPercentage, "b", bombPercentage, "")
-
-	flag.IntVar(&width, "width", width, "game field width")
+	flag.IntVar(&width, "width", width,
+		"game field width, can be value between 7 and terminal width / 3")
 	flag.IntVar(&width, "w", width, "")
 
-	flag.IntVar(&height, "height", height, "game field height")
-	flag.IntVar(&height, "h", height, "")
-
-	flag.Int64Var(&seed, "seed", seed, "game seed, will use unix-nano if 0")
-	flag.Int64Var(&seed, "s", seed, "")
+	flag.StringVar(&youWonMessage, "you-won-message", youWonMessage,
+		"replaces default you won message")
+	flag.StringVar(&youWonMessage, "y", youWonMessage, "")
 
 	var shorthands = map[string]string{
-		"game-over-message": "-g,",
-		"win-message":       "-p,",
 		"bomb-percentage":   "-b,",
-		"width":             "-w,",
+		"game-over-message": "-g,",
 		"height":            "-h,",
 		"seed":              "-s,",
+		"width":             "-w,",
+		"you-won-message":   "-y,",
 	}
 
 	format := "  %-3s --%-19s %s %s\n"
 	flag.Usage = func() {
-		fmt.Println("simple minesweeper for terminal\nusage:\n$ mine [arguments]")
+		fmt.Println(
+			"simple minesweeper for terminal\nusage:\n$ mine [arguments]")
 		fmt.Printf(format, "-h,", "help", "show this message and exit", "")
 		flag.VisitAll(func(fn *flag.Flag) {
 			if fn.Usage == "" {
@@ -74,7 +81,7 @@ func init() {
 
 			var defVal string
 			if fn.DefValue != "" && fn.DefValue != "false" {
-				defVal = fmt.Sprintf(" (default: %q)", fn.DefValue)
+				defVal = fmt.Sprintf("(default: %q)", fn.DefValue)
 			}
 
 			fmt.Printf(format, shorthands[fn.Name], fn.Name, fn.Usage, defVal)
@@ -103,7 +110,8 @@ func init() {
 	}
 
 	if showVer {
-		fmt.Printf("version:    %s\nbuild date: %s\ncommit:     %s\nbuilt by:   %s\n",
+		fmt.Printf(
+			"version:    %s\nbuild date: %s\ncommit:     %s\nbuilt by:   %s\n",
 			version, buildDate, commit, builtBy,
 		)
 		os.Exit(0)
@@ -422,7 +430,7 @@ func (f *field) finishGame(message string) bool {
 	time.Sleep(time.Second)
 	f.render()
 	if ok := f.getConfirmation("restart? [y/n]"); ok {
-		if err := f.reset(width, height); err != nil {
+		if err := f.reset(height, width); err != nil {
 			fmt.Println(err)
 			return false
 		}
@@ -488,7 +496,7 @@ func isAKey(buf []byte, key string) bool {
 func main() {
 	var mainField field
 
-	if err := mainField.reset(width, height); err != nil {
+	if err := mainField.reset(height, width); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -515,7 +523,7 @@ loop:
 	for {
 		if mainField.victory() {
 			mainField.openNonBombs()
-			if !mainField.finishGame(winMessage) {
+			if !mainField.finishGame(youWonMessage) {
 				break loop
 			}
 		}
@@ -544,7 +552,7 @@ loop:
 
 		case isAKey(buf, "r"), isAKey(buf, "R"):
 			if mainField.getConfirmation("restart? [y/n]") {
-				if err := mainField.reset(width, height); err != nil {
+				if err := mainField.reset(height, width); err != nil {
 					fmt.Println(err)
 					return
 				}
